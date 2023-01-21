@@ -19,7 +19,7 @@ class PhotosAdapter(private val context: Context, val photos: ArrayList<Photo>):
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val binding = PhotoItemBinding.inflate(LayoutInflater.from(context))
+        val binding = PhotoItemBinding.inflate(LayoutInflater.from(context), parent, false)
         return ViewHolder(binding)
     }
 

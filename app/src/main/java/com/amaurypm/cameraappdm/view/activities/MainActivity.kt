@@ -20,7 +20,10 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.amaurypm.cameraappdm.databinding.ActivityMainBinding
 import com.amaurypm.cameraappdm.model.Photo
 import com.amaurypm.cameraappdm.util.ImageUtils
+import com.amaurypm.cameraappdm.util.logs
+import com.amaurypm.cameraappdm.util.mitoast
 import com.amaurypm.cameraappdm.view.adapters.PhotosAdapter
+import com.amaurypm.cameraappdm.view.fragments.DetailsFragment
 import java.io.File
 import java.io.IOException
 
@@ -64,6 +67,7 @@ class MainActivity : AppCompatActivity() {
         binding.rvPhotos.layoutManager = GridLayoutManager(this, 3)
         binding.rvPhotos.adapter = photosAdapter
 
+
     }
 
     fun updateOrRequestPermissions() {
@@ -100,7 +104,8 @@ class MainActivity : AppCompatActivity() {
 
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             //Se obtuvo el permiso
-            Toast.makeText(this, "Se obtuvo el permiso de la cámara", Toast.LENGTH_SHORT).show()
+            //Toast.makeText(this, "Se obtuvo el permiso de la cámara", Toast.LENGTH_SHORT).show()
+            if(!isCameraActive) startIntentCamera()
         }else{
             if(shouldShowRequestPermissionRationale(permissions[0])){
                 AlertDialog.Builder(this@MainActivity)
@@ -116,7 +121,8 @@ class MainActivity : AppCompatActivity() {
                     .create()
                     .show()
             }else{
-                Toast.makeText(this, "El permiso al acceso de la cámara se ha negado permanentemente", Toast.LENGTH_SHORT).show()
+                mitoast("El permiso al acceso de la cámara se ha negado permanentemente")
+                //Toast.makeText(this, "El permiso al acceso de la cámara se ha negado permanentemente", Toast.LENGTH_SHORT).show()
                 finish()
             }
         }
@@ -128,7 +134,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun selectedPhoto(photo: Photo, position: Int){
+        val bundle = Bundle().apply {
+            putParcelable("photo", photo)
+            putInt("position", position)
+        }
 
+        val detailsDialog = DetailsFragment()
+        detailsDialog.arguments = bundle
+        detailsDialog.show(supportFragmentManager, "Detalles")
     }
 
     fun startIntentCamera(){
