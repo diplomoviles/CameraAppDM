@@ -4,6 +4,9 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
@@ -63,7 +66,12 @@ class MainActivity : AppCompatActivity() {
             //Verificando que se obtuvo una foto
             if(result.resultCode == Activity.RESULT_OK){
                 currentPhotoPath?.let { path ->
-                    photos.add(Photo(decodeSampledBitmapPath(path, 500, 900)))
+
+                    val bitmap = decodeSampledBitmapPath(path, 500, 900)
+                    val rotatedBitmap = rotateImageIfRequired(bitmap, path)
+
+                    //photos.add(Photo(decodeSampledBitmapPath(path, 500, 900)))
+                    photos.add(Photo(rotatedBitmap))
                     photosAdapter?.notifyItemInserted(photos.size-1)
                 }
             }
@@ -224,6 +232,26 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
         }
 
+    }
+
+    private fun rotateImageIfRequired(img: Bitmap, selectedImage: String): Bitmap {
+        val ei = ExifInterface(selectedImage)
+        val orientation: Int = ei.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+
+        return when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> rotateImage(img, 90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> rotateImage(img, 180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> rotateImage(img, 270f)
+            else -> img
+        }
+    }
+
+    private fun rotateImage(img: Bitmap, degree: Float): Bitmap {
+        val matrix = Matrix()
+        matrix.postRotate(degree)
+        val rotatedImg = Bitmap.createBitmap(img, 0, 0, img.width, img.height, matrix, true)
+        img.recycle()
+        return rotatedImg
     }
 
 }
