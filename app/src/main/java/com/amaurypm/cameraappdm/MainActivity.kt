@@ -1,25 +1,35 @@
 package com.amaurypm.cameraappdm
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.registerForActivityResult
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.core.os.bundleOf
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.amaurypm.cameraappdm.data.PhotoRepository
 import com.amaurypm.cameraappdm.databinding.ActivityMainBinding
 import com.amaurypm.cameraappdm.ui.adapters.PhotosAdapter
+import com.amaurypm.cameraappdm.ui.fragments.DetailsFragment
+import java.io.File
+import java.io.IOException
 
 class MainActivity : AppCompatActivity() {
 
@@ -60,13 +70,57 @@ class MainActivity : AppCompatActivity() {
 
             photosAdapter = PhotosAdapter(photoPaths){ photoPath, position ->
                 //Manejo del click de cada foto
+                val bundle = bundleOf(
+                    "position" to position,
+                    "photo_path" to photoPath
+                )
+
+                val detailsDialog = DetailsFragment()
+                detailsDialog.arguments = bundle
+                detailsDialog.show(supportFragmentManager, "Detalles")
+
             }
 
             binding.rvPhotos.apply {
                 layoutManager = GridLayoutManager(this@MainActivity, 3)
                 adapter = photosAdapter
             }
+        }
 
+        mainViewModel.itemRemoved.observe(this){ position ->
+            val size = photosAdapter?.itemCount
+            if(size!=null){
+                photoPaths.removeAt(position)
+                photosAdapter?.notifyItemRemoved(position)
+                photosAdapter?.notifyItemRangeChanged(
+                    position,
+                    size
+                )
+                Toast.makeText(
+                    this,
+                    "Foto eliminada exitosamente",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+        resultLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ){ result ->
+            currentPhotoPath?.let{ path ->
+                val file = File(path)
+                if(result.resultCode == Activity.RESULT_OK){
+                    if(file.length() > 0L){
+                        photoPaths.add(path)
+                        photosAdapter?.notifyItemInserted(photoPaths.size-1)
+                    }else{
+                        file.delete()
+                    }
+                }else{
+                    file.delete()
+                }
+            }
+            isCameraActive = false
         }
 
 
@@ -76,11 +130,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun actionPermissionGranted(){
-        Toast.makeText(
+        /*Toast.makeText(
             this,
             "El permiso a la cámara se ha concedido",
             Toast.LENGTH_SHORT
-        ).show()
+        ).show()*/
+        if(!isCameraActive)
+            startIntentCamera()
     }
 
     private fun updateOrRequestPermission(){
@@ -110,7 +166,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRestart() {
         super.onRestart()
-        updateOrRequestPermission()
+        if(isCameraActive)
+            updateOrRequestPermission()
     }
 
     override fun onRequestPermissionsResult(
@@ -155,6 +212,42 @@ class MainActivity : AppCompatActivity() {
                     }
                     .create().show()
             }
+        }
+    }
+
+    private fun startIntentCamera(){
+        try{
+
+            //Generamos un contenedor para el archivo
+            val imageFile = File.createTempFile(
+                "photo",
+                ".jpg",
+                getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            )
+
+            currentPhotoPath = imageFile.absolutePath
+
+            //Con el archivo, generamos un uri con la authority correspondiente
+            val imageUri = FileProvider.getUriForFile(
+                this,
+                "com.amaurypm.cameraappdm.fileprovider",
+                imageFile
+            )
+
+            //Generamos el intent hacia la cámara
+            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                putExtra(MediaStore.EXTRA_OUTPUT, imageUri)
+            }
+
+            //Mandamos el intent
+            resultLauncher.launch(intent)
+
+            isCameraActive = true
+
+
+        }catch (e: IOException){
+            //Manejamos la excepción
+            e.printStackTrace()
         }
     }
 }

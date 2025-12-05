@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.amaurypm.cameraappdm.databinding.PhotoItemBinding
 import com.amaurypm.cameraappdm.utils.decodeSampledBitmapPath
+import com.amaurypm.cameraappdm.utils.rotateImageIfRequired
 
 class PhotoViewHolder(
     private val binding: PhotoItemBinding,
@@ -30,7 +31,11 @@ class PhotoViewHolder(
         currentPhotoPosition = position
 
         //Cargamos una versión reducida de la foto
-        binding.ivPhoto.setImageBitmap(decodeSampledBitmapPath(photoItemPath, 500, 900))
+        val bitmap = decodeSampledBitmapPath(photoItemPath, 500, 900)
+        //Rotamos la imagen si los metadatos Exif así lo indican
+        val rotatedBitmap = rotateImageIfRequired(bitmap, photoItemPath)
+
+        binding.ivPhoto.setImageBitmap(rotatedBitmap)
     }
 
     companion object{
